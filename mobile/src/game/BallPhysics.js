@@ -14,21 +14,32 @@ export class BallPhysics {
     this.engine = engine;
   }
 
-  createBall(x, y = 20) {
+  createBall(x, y = 20, options = {}) {
     if (!this.engine.canDropBall()) {
       return false;
     }
 
+    const { direction, speed } = options;
+
     const ball = {
       x,
       y,
-      vx: (Math.random() - 0.5) * 2,
-      vy: 0,
-      radius: 10 + Math.random() * 10,
+      vx: direction ? 0 : (Math.random() - 0.5) * 2,
+      vy: direction ? 0 : 0,
+      radius: 6 + Math.random() * 6,
       color: this.getRandomColor(),
       trail: [],
       isBonus: false,
     };
+
+    if (direction) {
+      const magnitude = Math.sqrt(direction.x * direction.x + direction.y * direction.y) || 1;
+      const normalizedX = direction.x / magnitude;
+      const normalizedY = direction.y / magnitude;
+      const initialSpeed = speed ?? 8;
+      ball.vx = normalizedX * initialSpeed;
+      ball.vy = normalizedY * initialSpeed;
+    }
 
     this.engine.balls.push(ball);
     this.engine.ballsDroppedThisTurn += 1;
@@ -51,6 +62,8 @@ export class BallPhysics {
       ball.vx *= this.engine.friction;
       ball.vy *= this.engine.friction;
 
+      this.applyGravityWells(ball);
+
       ball.x += ball.vx;
       ball.y += ball.vy;
 
@@ -59,13 +72,19 @@ export class BallPhysics {
         ball.trail.shift();
       }
 
-      if (ball.x - ball.radius < 0 || ball.x + ball.radius > this.engine.width) {
-        ball.vx = -ball.vx * this.engine.bounce;
-        ball.x = ball.x - ball.radius < 0 ? ball.radius : this.engine.width - ball.radius;
+      if (ball.x - ball.radius < 0) {
+        this.applyWallBounce(ball, 1, 0);
+        ball.x = ball.radius;
+      } else if (ball.x + ball.radius > this.engine.width) {
+        this.applyWallBounce(ball, -1, 0);
+        ball.x = this.engine.width - ball.radius;
       }
 
-      if (ball.y + ball.radius > this.engine.height) {
-        ball.vy = -ball.vy * this.engine.bounce;
+      if (ball.y - ball.radius < 0) {
+        this.applyWallBounce(ball, 0, 1);
+        ball.y = ball.radius;
+      } else if (ball.y + ball.radius > this.engine.height) {
+        this.applyWallBounce(ball, 0, -1);
         ball.y = this.engine.height - ball.radius;
 
         if (Math.abs(ball.vy) < 0.5) {
@@ -85,5 +104,45 @@ export class BallPhysics {
 
   getVelocityMagnitude(ball) {
     return Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+  }
+
+  applyGravityWells(ball) {
+    if (!this.engine.gravityWells || this.engine.gravityWells.length === 0) {
+      return;
+    }
+
+    this.engine.gravityWells.forEach((well) => {
+      const dx = well.x - ball.x;
+      const dy = well.y - ball.y;
+      const distanceSq = dx * dx + dy * dy;
+      const radius = well.radius;
+      if (distanceSq > radius * radius || distanceSq === 0) return;
+
+      const distance = Math.sqrt(distanceSq);
+      const falloff = 1 - distance / radius;
+
+      const dirX = dx / distance;
+      const dirY = dy / distance;
+
+      const radialForce = well.strength * falloff;
+      ball.vx += dirX * radialForce;
+      ball.vy += dirY * radialForce;
+
+      const perpX = -dirY;
+      const perpY = dirX;
+      const tangentialForce =
+        well.tangentialStrength * falloff * Math.sin(well.rotation);
+      ball.vx += perpX * tangentialForce;
+      ball.vy += perpY * tangentialForce;
+    });
+  }
+
+  applyWallBounce(ball, normalX, normalY) {
+    const velocityDotNormal = ball.vx * normalX + ball.vy * normalY;
+    if (velocityDotNormal > 0) return;
+
+    const impulse = (1 + this.engine.bounce) * velocityDotNormal;
+    ball.vx -= impulse * normalX;
+    ball.vy -= impulse * normalY;
   }
 }
