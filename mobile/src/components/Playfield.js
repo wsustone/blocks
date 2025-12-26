@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-export const Playfield = ({ engine, aimState, launchOverlay }) => {
+export const Playfield = ({ engine }) => {
   if (!engine) return null;
 
   const gridSpacing = 40;
@@ -13,84 +13,6 @@ export const Playfield = ({ engine, aimState, launchOverlay }) => {
     { length: Math.floor(engine.height / gridSpacing) + 1 },
     (_, index) => index * gridSpacing
   );
-
-  const renderAimOverlay = () => {
-    if (!aimState?.isAiming || !aimState.start || !aimState.current) return null;
-    const dx = aimState.current.x - aimState.start.x;
-    const dy = aimState.current.y - aimState.start.y;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-    return (
-      <View style={styles.aimLayer}>
-        <View
-          style={[
-            styles.aimLine,
-            {
-              width: Math.max(0, length),
-              left: aimState.start.x,
-              top: aimState.start.y,
-              transform: [{ rotate: `${angle}deg` }],
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.aimHandle,
-            {
-              left: aimState.start.x - 6,
-              top: aimState.start.y - 6,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.aimHandle,
-            styles.aimHandleActive,
-            {
-              left: aimState.current.x - 8,
-              top: aimState.current.y - 8,
-            },
-          ]}
-        />
-      </View>
-    );
-  };
-
-  const renderLaunchOverlay = () => {
-    if (aimState?.isAiming || !launchOverlay?.start || !launchOverlay?.end) {
-      return null;
-    }
-    const dx = launchOverlay.end.x - launchOverlay.start.x;
-    const dy = launchOverlay.end.y - launchOverlay.start.y;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-    return (
-      <View style={styles.launchLayer}>
-        <View
-          style={[
-            styles.launchLine,
-            {
-              width: Math.max(0, length),
-              left: launchOverlay.start.x,
-              top: launchOverlay.start.y,
-              transform: [{ rotate: `${angle}deg` }],
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.launchPoint,
-            {
-              left: launchOverlay.start.x - 5,
-              top: launchOverlay.start.y - 5,
-            },
-          ]}
-        />
-      </View>
-    );
-  };
 
   return (
     <View
@@ -133,9 +55,6 @@ export const Playfield = ({ engine, aimState, launchOverlay }) => {
           style={[styles.gridLineHorizontal, { top: y, width: engine.width }]}
         />
       ))}
-
-      {renderAimOverlay()}
-      {renderLaunchOverlay()}
 
       {engine.enemies.map((enemy) => (
         <View

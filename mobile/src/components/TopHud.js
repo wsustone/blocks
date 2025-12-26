@@ -16,7 +16,7 @@ export const TopHud = ({
   comboMultiplier,
   pendingBonus
 }) => (
-  <View style={[styles.container, { width }]}> 
+  <View style={[styles.container, { width }]}>
     <View style={styles.row}>
       <StatBlock label="Score" value={score} />
       <StatBlock label="Balls" value={balls} />
@@ -41,8 +41,7 @@ export const TopHud = ({
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',

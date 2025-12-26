@@ -1,8 +1,8 @@
 export const BACKGROUND_COLOR = '#030712';
-export const TIMELINE_HEIGHT = 20;
+export const TIMELINE_HEIGHT = 36;
 export const TIMELINE_MARGIN = 16;
 export const TIMELINE_TOP = 0;
-export const TIMELINE_RADIUS = 70;
+export const TIMELINE_RADIUS = 32;
 export const TIMELINE_POINT_RADIUS = 5;
 export const TIMELINE_POINT_Y = TIMELINE_TOP + TIMELINE_POINT_RADIUS;
 export const TIMELINE_LINE_Y = TIMELINE_POINT_Y + 4;

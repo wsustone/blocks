@@ -8,7 +8,7 @@ import { GameEngine } from './src/game/GameEngine';
 import { BallPhysics } from './src/game/BallPhysics';
 import { EnemySystem } from './src/game/EnemySystem';
 import { CollisionSystem } from './src/game/CollisionSystem';
-import { TopHud, LaunchTimeline, Playfield, BottomControls } from './src/components';
+import { TopHud, LaunchTimeline, Playfield } from './src/components';
 import {
   BACKGROUND_COLOR,
   TIMELINE_HEIGHT,
@@ -211,15 +211,6 @@ export default function App() {
     };
   }, []);
 
-  const dropRandomBall = () => {
-    const engine = engineRef.current;
-    const ballPhysics = ballPhysicsRef.current;
-    if (!engine || !ballPhysics) return;
-    const positionX = Math.random() * engine.width;
-    ballPhysics.createBall(positionX, 20);
-    setTick((tick) => tick + 1);
-  };
-
   const handleEndTurn = () => {
     engineRef.current?.endTurn();
     setTick((tick) => tick + 1);
@@ -243,40 +234,30 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <GestureHandlerRootView style={styles.root}>
-        <TopHud
-          width={playWidth}
-          score={(engine?.score ?? 0).toLocaleString('en-US')}
-          balls={`${turnInfo.ballsDropped}/${turnInfo.maxBalls}`}
-          enemies={turnInfo.enemyCount.toString()}
-          comboMultiplier={engine?.comboMultiplier ?? 1}
-          pendingBonus={turnInfo.pendingBonus}
-        />
-
-        <LaunchTimeline
-          width={playWidth}
-          aimState={aimState}
-          launchOverlay={launchOverlay}
-        />
+        <View style={[styles.hudStack, { width: playWidth }]}>
+          <TopHud
+            width={playWidth}
+            score={(engine?.score ?? 0).toLocaleString('en-US')}
+            balls={`${turnInfo.ballsDropped}/${turnInfo.maxBalls}`}
+            enemies={turnInfo.enemyCount.toString()}
+            comboMultiplier={engine?.comboMultiplier ?? 1}
+            pendingBonus={turnInfo.pendingBonus}
+          />
+          <LaunchTimeline
+            width={playWidth}
+            aimState={aimState}
+            launchOverlay={launchOverlay}
+          />
+        </View>
 
         <View style={styles.playArea}>
           <View
             style={[styles.canvasWrapper, { width: playWidth, height: playHeight }]}
             {...panResponder.panHandlers}
           >
-            <Playfield
-              engine={engineRef.current}
-              aimState={aimState}
-              launchOverlay={launchOverlay}
-            />
+            <Playfield engine={engineRef.current} />
           </View>
         </View>
-
-        <BottomControls
-          turnLabel={turnInfo.currentTurn === 'player' ? 'YOUR TURN' : 'ENEMY TURN'}
-          onDropBall={dropRandomBall}
-          onEndTurn={handleEndTurn}
-          onClearBalls={handleClearBalls}
-        />
       </GestureHandlerRootView>
     </SafeAreaView>
   );
@@ -291,15 +272,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BACKGROUND_COLOR,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 16
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  hudStack: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
   },
   playArea: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'flex-start',
   },
   canvasWrapper: {
+    marginTop: 0,
     borderWidth: 1,
     borderColor: '#1e293b',
     borderRadius: 16,

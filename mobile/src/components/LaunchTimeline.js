@@ -9,7 +9,12 @@ import {
   TIMELINE_RADIUS,
 } from '../constants/layout';
 
-export const LaunchTimeline = ({ width, aimState, launchOverlay }) => {
+export const LaunchTimeline = ({
+  width,
+  aimState,
+  launchOverlay,
+  variant = 'standalone',
+}) => {
   const activeState =
     aimState?.isAiming && aimState.start && aimState.current
       ? { start: aimState.start, end: aimState.current }
@@ -40,49 +45,73 @@ export const LaunchTimeline = ({ width, aimState, launchOverlay }) => {
   const lineEndY = TIMELINE_POINT_Y + dirY * cappedLength;
   const angleRadians = Math.atan2(dirY, dirX);
 
-  if (!activeState || startX === null) {
-    return (
-      <View style={[styles.container, { width }]}> 
-        <View style={styles.base} />
-      </View>
-    );
-  }
+  const pointerEventsValue = variant === 'overlay' ? 'none' : 'auto';
+  const containerStyles = [
+    styles.container,
+    variant === 'overlay' && styles.overlayContainer,
+    { width },
+  ];
 
   return (
-    <View style={[styles.container, { width }]}> 
-      <View style={styles.base} />
-      <View
-        style={[styles.launchPoint, { left: startX - TIMELINE_POINT_RADIUS }]}
-      />
-      <View
-        style={[styles.angleLayer, { left: startX, top: TIMELINE_POINT_Y }]}
-      >
-        <View
-          style={[styles.angleLine, {
-            width: cappedLength,
-            transform: [
-              { translateX: -cappedLength / 2 },
-              { rotate: `${angleRadians}rad` },
-              { translateX: cappedLength / 2 },
-            ],
-          }]}
-        />
-        <View
-          style={[styles.angleHandle, {
-            left: lineEndX - startX - 6,
-            top: lineEndY - TIMELINE_POINT_Y - 6,
-          }]}
-        />
-      </View>
+    <View style={containerStyles} pointerEvents={pointerEventsValue}>
+      <View style={[styles.base, variant === 'overlay' && styles.overlayBase]} />
+      {activeState && startX !== null && (
+        <>
+          <View
+            style={[
+              styles.launchPoint,
+              { left: startX - TIMELINE_POINT_RADIUS },
+              variant === 'overlay' && styles.overlayLaunchPoint,
+            ]}
+          />
+          <View
+            style={[
+              styles.angleLayer,
+              { left: startX, top: TIMELINE_POINT_Y },
+            ]}
+          >
+            <View
+              style={[
+                styles.angleLine,
+                {
+                  width: cappedLength,
+                  transform: [
+                    { translateX: -cappedLength / 2 },
+                    { rotate: `${angleRadians}rad` },
+                    { translateX: cappedLength / 2 },
+                  ],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.angleHandle,
+                {
+                  left: lineEndX - startX - 6,
+                  top: lineEndY - TIMELINE_POINT_Y - 6,
+                },
+              ]}
+            />
+          </View>
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: TIMELINE_HEIGHT + 20,
+    height: TIMELINE_HEIGHT + 12,
     justifyContent: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 0,
+  },
+  overlayContainer: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-start',
   },
   base: {
     height: 4,
@@ -90,6 +119,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(148,163,184,0.3)',
     marginHorizontal: TIMELINE_MARGIN,
     marginTop: TIMELINE_POINT_Y,
+  },
+  overlayBase: {
+    marginTop: 16,
+    backgroundColor: 'rgba(248,250,252,0.15)',
   },
   launchPoint: {
     position: 'absolute',
@@ -100,6 +133,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#bfdbfe',
     top: TIMELINE_POINT_Y - TIMELINE_POINT_RADIUS,
+  },
+  overlayLaunchPoint: {
+    backgroundColor: '#fcd34d',
+    borderColor: '#fde68a',
   },
   angleLayer: {
     position: 'absolute',
