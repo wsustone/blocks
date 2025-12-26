@@ -1,5 +1,21 @@
 const GRID_SIZE = 40;
 
+const THEME_TIERS = [
+  { minWave: 1, fill: '#1d4ed8', border: '#60a5fa' },
+  { minWave: 4, fill: '#b45309', border: '#f97316' },
+  { minWave: 7, fill: '#831843', border: '#f472b6' },
+  { minWave: 11, fill: '#6b21a8', border: '#c084fc' },
+];
+
+const shuffleArray = (array) => {
+  const working = [...array];
+  for (let i = working.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [working[i], working[j]] = [working[j], working[i]];
+  }
+  return working;
+};
+
 export class EnemySystem {
   constructor(engine) {
     this.engine = engine;
@@ -7,49 +23,73 @@ export class EnemySystem {
     this.gridRows = Math.floor(engine.height / this.gridSize);
     this.gridCols = Math.floor(engine.width / this.gridSize);
     this.enemyCounter = 0;
+    this.waveNumber = 1;
+    this.waveThreatBase = 4;
 
     this.enemyTypes = [
       {
         name: 'normal',
-        color: '#FF4444',
-        bounceCoefficient: 0.8,
+        color: '#91a4ff',
+        bounceCoefficient: 0.85,
         size: 30,
-        maxHealth: 100,
+        maxHealth: 95,
         damageMultiplier: 1.0,
         stepCells: 1,
+        cost: 1,
+        weight: 5,
       },
       {
         name: 'bouncy',
-        color: '#44FF44',
-        bounceCoefficient: 1.5,
-        size: 25,
-        maxHealth: 75,
+        color: '#8bf8a0',
+        bounceCoefficient: 1.4,
+        size: 26,
+        maxHealth: 80,
         damageMultiplier: 1.2,
         stepCells: 2,
+        cost: 1.5,
+        weight: 3,
       },
       {
         name: 'sticky',
-        color: '#FF44FF',
-        bounceCoefficient: 0.3,
-        size: 35,
-        maxHealth: 150,
-        damageMultiplier: 0.8,
+        color: '#f472b6',
+        bounceCoefficient: 0.35,
+        size: 34,
+        maxHealth: 140,
+        damageMultiplier: 0.85,
         stepCells: 1,
+        cost: 2,
+        weight: 2,
       },
       {
         name: 'heavy',
-        color: '#4444FF',
-        bounceCoefficient: 0.5,
-        size: 40,
-        maxHealth: 200,
-        damageMultiplier: 0.6,
+        color: '#60a5fa',
+        bounceCoefficient: 0.55,
+        size: 42,
+        maxHealth: 210,
+        damageMultiplier: 0.65,
         stepCells: 1,
+        cost: 2.5,
+        weight: 1.6,
+      },
+      {
+        name: 'boss',
+        color: '#fbbf24',
+        bounceCoefficient: 0.9,
+        size: 56,
+        maxHealth: 420,
+        damageMultiplier: 0.9,
+        stepCells: 1,
+        cost: 4.5,
+        weight: 0.6,
       },
     ];
 
-    // start with few enemies
-    this.createEnemy();
-    this.createEnemy();
+    this.enemyTypesByName = this.enemyTypes.reduce((acc, type) => {
+      acc[type.name] = type;
+      return acc;
+    }, {});
+
+    this.spawnWave();
   }
 
   updateDimensions(width, height) {
@@ -57,59 +97,174 @@ export class EnemySystem {
     this.gridRows = Math.floor(height / this.gridSize);
   }
 
+  getWaveConfig() {
+    const comboPressure = this.engine?.comboMultiplier > 2 ? 2 : 0;
+    const budget = this.waveThreatBase + Math.floor(this.waveNumber * 1.5) + comboPressure;
+    return {
+      budget,
+      armoredChance: Math.min(0.1 + this.waveNumber * 0.02, 0.5),
+      splitterChance: this.waveNumber % 4 === 0 ? 0.35 : 0.12,
+      eliteChance: Math.max(0, this.waveNumber - 4) * 0.03,
+      bossWave: this.waveNumber % 5 === 0,
+    };
+  }
+
+  pickTypeForBudget(budget) {
+    const candidates = this.enemyTypes.filter((type) => type.cost <= budget + 0.4);
+    const pool = candidates.length ? candidates : [this.enemyTypes[0]];
+    const totalWeight = pool.reduce((sum, type) => sum + type.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const type of pool) {
+      roll -= type.weight;
+      if (roll <= 0) {
+        return type;
+      }
+    }
+    return pool[pool.length - 1];
+  }
+
+  rollModifiers(config) {
+    const modifiers = [];
+    if (Math.random() < config.armoredChance) modifiers.push('armored');
+    if (Math.random() < config.splitterChance) modifiers.push('splitter');
+    if (Math.random() < config.eliteChance) modifiers.push('elite');
+    return modifiers;
+  }
+
+  spawnWave(configOverride = null) {
+    if (this.gridCols <= 0) return;
+    const config = configOverride ?? this.getWaveConfig();
+
+    let budget = config.budget;
+    const columns = shuffleArray([...Array(this.gridCols).keys()]);
+
+    if (config.bossWave) {
+      const bossColumn = columns.length ? columns.shift() : 0;
+      this.createEnemy({
+        typeOverride: this.enemyTypesByName.boss,
+        positionX: bossColumn,
+        positionY: this.gridRows - 1,
+        modifiers: ['armored', 'elite'],
+      });
+      budget -= this.enemyTypesByName.boss.cost;
+    }
+
+    while (budget > 0) {
+      if (!columns.length) {
+        columns.push(...shuffleArray([...Array(this.gridCols).keys()]));
+      }
+      const column = columns.shift();
+      const enemyType = this.pickTypeForBudget(budget);
+      const modifiers = this.rollModifiers(config);
+      this.createEnemy({
+        typeOverride: enemyType,
+        positionX: column,
+        positionY: this.gridRows - 1,
+        modifiers,
+      });
+      budget -= enemyType.cost;
+    }
+  }
+
+  spawnReinforcement() {
+    const reinforcementConfig = this.getWaveConfig();
+    reinforcementConfig.budget = Math.max(1, Math.floor(reinforcementConfig.budget * 0.4));
+    reinforcementConfig.bossWave = false;
+    this.spawnWave(reinforcementConfig);
+  }
+
+  advanceWave() {
+    this.waveNumber += 1;
+    this.spawnWave();
+  }
+
+  getThemeForWave(waveNumber) {
+    for (let i = THEME_TIERS.length - 1; i >= 0; i -= 1) {
+      if (waveNumber >= THEME_TIERS[i].minWave) {
+        return THEME_TIERS[i];
+      }
+    }
+    return THEME_TIERS[0];
+  }
+
+  getHealthMultiplier(isFragment) {
+    if (isFragment) return 1;
+    return 1 + this.waveNumber * 0.12;
+  }
+
   createEnemy(options = {}) {
     const {
       fragmentOf = null,
+      typeOverride = null,
       positionX,
       positionY,
       healthOverride,
       sizeOverride,
       colorOverride,
+      modifiers = [],
     } = options;
 
-    const type =
-      fragmentOf ||
-      this.enemyTypes[Math.floor(Math.random() * this.enemyTypes.length)];
-    const healthMultiplier =
-      fragmentOf || {
-        value: 1 + (this.engine.totalBallsDropped || 0) * 0.05,
-      };
+    const baseType =
+      fragmentOf || typeOverride || this.enemyTypes[Math.floor(Math.random() * this.enemyTypes.length)];
+    const theme = this.getThemeForWave(this.waveNumber);
+    const healthMultiplier = this.getHealthMultiplier(Boolean(fragmentOf));
     const scaledHealth = Math.floor(
-      (healthOverride ?? type.maxHealth * (fragmentOf ? 0.35 : healthMultiplier.value))
+      (healthOverride ?? baseType.maxHealth) * healthMultiplier * (fragmentOf ? 0.35 : 1)
     );
 
     const gridX =
       typeof positionX === 'number'
         ? positionX
         : Math.floor(Math.random() * this.gridCols);
-    const pixelX = gridX * this.gridSize + (this.gridSize - (sizeOverride ?? type.size)) / 2;
-    const gridY =
-      typeof positionY === 'number' ? positionY : this.gridRows - 2;
+    const pixelX = gridX * this.gridSize + (this.gridSize - (sizeOverride ?? baseType.size)) / 2;
+    const gridY = typeof positionY === 'number' ? positionY : this.gridRows - 2;
     const pixelY = gridY * this.gridSize;
 
     const enemy = {
-      id: `enemy-${this.enemyCounter += 1}`,
+      id: `enemy-${(this.enemyCounter += 1)}`,
       x: pixelX,
       y: pixelY,
       gridX,
       gridY,
-      width: sizeOverride ?? type.size,
-      height: sizeOverride ?? type.size,
-      color: colorOverride ?? type.color,
-      type: type.name,
-      bounceCoefficient: type.bounceCoefficient,
-      stepCells: fragmentOf ? 1 : type.stepCells,
+      width: sizeOverride ?? baseType.size,
+      height: sizeOverride ?? baseType.size,
+      color: colorOverride ?? baseType.color ?? theme.fill,
+      outlineColor: theme.border,
+      type: baseType.name,
+      bounceCoefficient: baseType.bounceCoefficient,
+      stepCells: fragmentOf ? 1 : baseType.stepCells,
       rotation: 0,
       health: scaledHealth,
       maxHealth: scaledHealth,
-      damageMultiplier: fragmentOf ? 0.6 : type.damageMultiplier,
+      damageMultiplier: fragmentOf ? 0.6 : baseType.damageMultiplier,
       flashTimer: 0,
-      dropsBall: fragmentOf ? false : Math.random() < 0.1,
+      dropsBall: fragmentOf ? false : Math.random() < 0.08,
       isFragment: Boolean(fragmentOf),
       fragmentSpawned: false,
+      waveBorn: this.waveNumber,
+      modifiers: new Set(modifiers),
     };
 
+    if (enemy.modifiers.has('elite')) {
+      enemy.width = Math.floor(enemy.width * 1.2);
+      enemy.height = Math.floor(enemy.height * 1.2);
+      enemy.isElite = true;
+      enemy.color = colorOverride ?? theme.fill;
+      enemy.outlineColor = '#fcd34d';
+    }
+
+    if (enemy.modifiers.has('armored')) {
+      enemy.maxArmor = Math.floor(enemy.maxHealth * 0.35);
+      enemy.armor = enemy.maxArmor;
+      enemy.outlineColor = '#a3e635';
+    }
+
+    if (enemy.modifiers.has('splitter') && !enemy.isFragment) {
+      enemy.forceFragment = true;
+    }
+
     this.engine.enemies.push(enemy);
+    return enemy;
   }
 
   updateEnemies() {
@@ -118,7 +273,6 @@ export class EnemySystem {
     if (this.engine.enemyMovementRequested) {
       for (let i = this.engine.enemies.length - 1; i >= 0; i -= 1) {
         const enemy = this.engine.enemies[i];
-
         if (!enemy) continue;
 
         if (enemy.flashTimer > 0) {
@@ -131,23 +285,20 @@ export class EnemySystem {
           enemy.gridY -= enemy.stepCells;
           enemy.y = enemy.gridY * this.gridSize;
         }
-        enemy.rotation += 0.1;
+        enemy.rotation += 0.08;
 
         if (enemy.gridY < 0) {
           this.engine.enemies.splice(i, 1);
         }
       }
 
-      if (Math.random() < 0.02) {
-        this.createEnemy();
-      }
-
+      this.advanceWave();
       this.engine.startNewPlayerTurn();
       movementOccurred = true;
     } else {
-      const maxEnemies = this.gridCols;
-      if (this.engine.enemies.length < maxEnemies && Math.random() < 0.01) {
-        this.createEnemy();
+      const minEnemies = Math.max(3, Math.floor(this.gridCols * 0.4));
+      if (this.engine.enemies.length < minEnemies) {
+        this.spawnReinforcement();
       }
     }
 
@@ -155,7 +306,14 @@ export class EnemySystem {
   }
 
   applyDamage(enemy, damage, enemyIndex) {
-    enemy.health -= damage;
+    let remainingDamage = damage;
+    if (enemy.armor && enemy.armor > 0) {
+      const absorbed = Math.min(enemy.armor, Math.floor(remainingDamage * 0.6));
+      enemy.armor -= absorbed;
+      remainingDamage -= Math.max(1, Math.floor(absorbed * 0.5));
+    }
+
+    enemy.health -= remainingDamage;
     if (enemy.id) {
       this.engine.registerHit(enemy.id);
     }
@@ -169,39 +327,42 @@ export class EnemySystem {
       this.engine.registerKill(enemy.isFragment);
       this.engine.addScore(enemy.maxHealth);
       this.engine.enemies.splice(enemyIndex, 1);
+      if (enemy.forceFragment && !enemy.isFragment) {
+        this.spawnFragment(enemy, true);
+      }
       return true;
     }
 
     if (
       !enemy.isFragment &&
       !enemy.fragmentSpawned &&
-      enemy.health / enemy.maxHealth <= 0.35
+      (enemy.health / enemy.maxHealth <= 0.35 || enemy.forceFragment)
     ) {
-      this.spawnFragment(enemy);
+      this.spawnFragment(enemy, false);
       enemy.fragmentSpawned = true;
     }
 
     return false;
   }
 
-  spawnFragment(enemy) {
+  spawnFragment(enemy, aggressive) {
     const fragmentSize = Math.max(16, Math.floor(enemy.width * 0.6));
-    const fragmentHealth = Math.max(20, Math.floor(enemy.maxHealth * 0.25));
+    const fragmentHealth = Math.max(30, Math.floor(enemy.maxHealth * 0.25));
     this.createEnemy({
       fragmentOf: {
         name: `${enemy.type}-fragment`,
-        color: '#FCD34D',
-        bounceCoefficient: 1.2,
+        color: aggressive ? '#f97316' : '#FCD34D',
+        bounceCoefficient: 1.15,
         size: fragmentSize,
         maxHealth: fragmentHealth,
-        damageMultiplier: 0.8,
+        damageMultiplier: aggressive ? 1.1 : 0.8,
         stepCells: 1,
       },
       positionX: enemy.gridX,
       positionY: Math.max(enemy.gridY - 1, 0),
       healthOverride: fragmentHealth,
       sizeOverride: fragmentSize,
-      colorOverride: '#FCD34D',
+      colorOverride: aggressive ? '#f97316' : '#FCD34D',
     });
   }
 

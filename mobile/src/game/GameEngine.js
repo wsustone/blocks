@@ -32,7 +32,7 @@ export class GameEngine {
         id: 'core-well',
         nx: 0.5,
         ny: 0.4,
-        radiusMultiplier: 0.32,
+        radiusMultiplier: 0.18,
         strength: 2.2,
         tangentialStrength: 1.1,
         rotationSpeed: 0.015,

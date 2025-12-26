@@ -36,9 +36,11 @@ export class BallPhysics {
       const magnitude = Math.sqrt(direction.x * direction.x + direction.y * direction.y) || 1;
       const normalizedX = direction.x / magnitude;
       const normalizedY = direction.y / magnitude;
-      const initialSpeed = speed ?? 8;
-      ball.vx = normalizedX * initialSpeed;
-      ball.vy = normalizedY * initialSpeed;
+      const baseSpeed = speed ?? 12;
+      const shallowBoost = 1 + Math.max(0, 0.7 - Math.abs(normalizedY)) * 0.9;
+      const finalSpeed = baseSpeed * shallowBoost;
+      ball.vx = normalizedX * finalSpeed;
+      ball.vy = normalizedY * finalSpeed;
     }
 
     this.engine.balls.push(ball);
