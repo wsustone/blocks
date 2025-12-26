@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gravity Drop Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            border: 2px solid #333;
+            cursor: crosshair;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="controls">
+        <button onclick="dropBall()">Drop Ball</button>
+        <button onclick="endTurn()">End Turn</button>
+        <button onclick="clearBalls()">Clear Balls</button>
+    </div>
+    
+    <div id="info">
+        <div>Turn: <span id="turnInfo">Your Turn (0/5 balls)</span></div>
+        <div>Balls: <span id="ballCount">0</span></div>
+        <div>Enemies: <span id="enemyCount">0</span></div>
+        <div>Click canvas to drop ball at position</div>
+        <div style="margin-top: 10px; font-size: 12px;">
+            <div><span style="color: #FF4444;">■</span> Normal (0.8x bounce)</div>
+            <div><span style="color: #44FF44;">■</span> Bouncy (1.5x bounce)</div>
+            <div><span style="color: #FF44FF;">■</span> Sticky (0.3x bounce)</div>
+            <div><span style="color: #4444FF;">■</span> Heavy (0.5x bounce)</div>
+            <div><span style="color: #FFD700;">●</span> Bonus ball (10% drop chance)</div>
+        </div>
+    </div>
+    
+    <script type="module" src="game-new.js"></script>
+</body>
+</html>
