@@ -1,8 +1,48 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
+import { Svg, Polygon } from 'react-native-svg';
+
+const PolygonShape = ({ type, size, color, borderColor }) => {
+  const getPoints = (sides, radius) => {
+    const angle = (Math.PI * 2) / sides;
+    return Array.from({ length: sides }, (_, i) => {
+      const x = radius * Math.cos(angle * i - Math.PI / 2);
+      const y = radius * Math.sin(angle * i - Math.PI / 2);
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
+  const sides = {
+    triangle: 3,
+    normal: 4,
+    bouncy: 4,
+    sticky: 4,
+    heavy: 4,
+    boss: 4,
+    pentagon: 5,
+    hexagon: 6,
+    heptagon: 7,
+  }[type] || 4;
+
+  const points = getPoints(sides, size / 2);
+
+  return (
+    <Svg width={size} height={size} viewBox={`${-size/2} ${-size/2} ${size} ${size}`}>
+      <Polygon points={points} fill={color} stroke={borderColor} strokeWidth="3" />
+    </Svg>
+  );
+};
 
 export const Playfield = ({ engine }) => {
   if (!engine) return null;
+
+  const getHitsRemaining = (enemy) => Math.ceil(enemy.health / engine.ballDamage);
+  const getBorderColor = (hits) => {
+    if (hits === 1) return '#ef4444'; // red
+    if (hits === 2) return '#f97316'; // orange
+    if (hits === 3) return '#eab308'; // yellow
+    return '#22c55e'; // green (4+)
+  };
 
   const gridSpacing = 40;
   const verticalLines = Array.from(
@@ -56,38 +96,40 @@ export const Playfield = ({ engine }) => {
         />
       ))}
 
-      {engine.enemies.map((enemy) => (
-        <View
-          key={enemy.id}
-          style={[styles.enemy, enemy.isFragment && styles.fragmentEnemy, {
-            width: enemy.width,
-            height: enemy.height,
-            backgroundColor: enemy.color,
-            transform: [
-              { translateX: enemy.x },
-              { translateY: enemy.y },
-              { rotate: `${enemy.rotation}rad` },
-            ],
-          }]}
-        >
-          {enemy.health < enemy.maxHealth && (
-            <View style={styles.healthBarContainer}>
-              <View style={styles.healthBarBackground} />
-              <View
-                style={[styles.healthBarFill, {
-                  width: `${(enemy.health / enemy.maxHealth) * 100}%`,
-                  backgroundColor:
-                    enemy.health / enemy.maxHealth > 0.5
-                      ? '#4CAF50'
-                      : enemy.health / enemy.maxHealth > 0.25
-                        ? '#FFA500'
-                        : '#FF4444',
-                }]}
-              />
-            </View>
-          )}
-        </View>
-      ))}
+      {engine.enemies.map((enemy) => {
+        const hits = getHitsRemaining(enemy);
+        const borderColor = getBorderColor(hits);
+        return (
+          <View
+            key={enemy.id}
+            style={[
+              styles.enemyContainer,
+              {
+                transform: [
+                  { translateX: enemy.x },
+                  { translateY: enemy.y },
+                  { rotate: `${enemy.rotation}rad` },
+                ],
+              },
+            ]}
+          >
+            <PolygonShape
+              type={enemy.type}
+              size={enemy.width}
+              color={enemy.color}
+              borderColor={borderColor}
+            />
+            <Text
+              style={[
+                styles.hitCount,
+                { transform: [{ rotate: `${-enemy.rotation}rad` }] },
+              ]}
+            >
+              {hits}
+            </Text>
+          </View>
+        );
+      })}
 
       {engine.balls.map((ball, index) => (
         <View
@@ -147,41 +189,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#93c5fd',
     borderRadius: 1,
   },
-  enemy: {
+  enemyContainer: {
     position: 'absolute',
-    borderRadius: 8,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
   },
-  fragmentEnemy: {
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    shadowColor: '#fcd34d',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-  },
-  healthBarContainer: {
+  hitCount: {
     position: 'absolute',
-    top: -10,
-    left: 0,
-    right: 0,
-    height: 4,
-  },
-  healthBarBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 4,
-    right: 4,
-    height: 4,
-    backgroundColor: '#00000088',
-    borderRadius: 2,
-  },
-  healthBarFill: {
-    position: 'absolute',
-    top: 0,
-    left: 4,
-    height: 4,
-    borderRadius: 2,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#000000',
+    textShadowColor: 'rgba(255,255,255,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 1,
   },
   ball: {
     position: 'absolute',

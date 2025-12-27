@@ -11,6 +11,8 @@ export class GameEngine {
     this.bounce = 0.85;
 
     this.baseBallsPerTurn = 5;
+    this.baseBallBaseline = this.baseBallsPerTurn;
+    this.baseBallCap = 40;
     this.maxBallsPerTurn = this.baseBallsPerTurn;
     this.ballsDroppedThisTurn = 0;
     this.totalBallsDropped = 0;
@@ -129,8 +131,16 @@ export class GameEngine {
     this.ballsDroppedThisTurn = 0;
     this.turnTimer = 0;
     this.enemyMovementRequested = false;
-    this.maxBallsPerTurn = this.baseBallsPerTurn + this.pendingBonusBalls;
-    this.pendingBonusBalls = 0;
+
+    if (this.pendingBonusBalls > 0) {
+      this.baseBallsPerTurn = Math.min(
+        this.baseBallsPerTurn + this.pendingBonusBalls,
+        this.baseBallCap
+      );
+      this.pendingBonusBalls = 0;
+    }
+
+    this.maxBallsPerTurn = this.baseBallsPerTurn;
   }
 
   addBonusBall(count = 1) {

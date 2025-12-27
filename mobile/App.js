@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions, PanResponder } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { GameEngine } from './src/game/GameEngine';
@@ -14,13 +14,13 @@ import {
   TIMELINE_HEIGHT,
   TIMELINE_MARGIN,
   TIMELINE_POINT_Y,
-  TIMELINE_MAX_Y
 } from './src/constants/layout';
 
-export default function App() {
+function AppContent() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const playWidth = Math.min(windowWidth - 24, 800);
   const playHeight = Math.min(windowHeight * 0.7, 620);
+  const insets = useSafeAreaInsets();
 
   const engineRef = useRef(null);
   const ballPhysicsRef = useRef(null);
@@ -233,13 +233,20 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <GestureHandlerRootView style={styles.root}>
+      <GestureHandlerRootView
+        style={[
+          styles.root,
+          {
+            paddingTop: 6,
+            paddingBottom: Math.max(insets.bottom, 16)
+          }
+        ]}
+      >
         <View style={[styles.hudStack, { width: playWidth }]}>
           <TopHud
             width={playWidth}
             score={(engine?.score ?? 0).toLocaleString('en-US')}
             balls={`${turnInfo.ballsDropped}/${turnInfo.maxBalls}`}
-            enemies={turnInfo.enemyCount.toString()}
             comboMultiplier={engine?.comboMultiplier ?? 1}
             pendingBonus={turnInfo.pendingBonus}
           />
@@ -260,6 +267,14 @@ export default function App() {
         </View>
       </GestureHandlerRootView>
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 

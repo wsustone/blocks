@@ -82,6 +82,50 @@ export class EnemySystem {
         cost: 4.5,
         weight: 0.6,
       },
+      {
+        name: 'triangle',
+        color: '#f87171',
+        bounceCoefficient: 1.1,
+        size: 30,
+        maxHealth: 90,
+        damageMultiplier: 1.15,
+        stepCells: 1,
+        cost: 1.3,
+        weight: 2.5,
+      },
+      {
+        name: 'pentagon',
+        color: '#c084fc',
+        bounceCoefficient: 0.75,
+        size: 32,
+        maxHealth: 130,
+        damageMultiplier: 0.9,
+        stepCells: 1,
+        cost: 2.2,
+        weight: 1.8,
+      },
+      {
+        name: 'hexagon',
+        color: '#60a5fa',
+        bounceCoefficient: 0.65,
+        size: 36,
+        maxHealth: 160,
+        damageMultiplier: 0.75,
+        stepCells: 1,
+        cost: 2.8,
+        weight: 1.4,
+      },
+      {
+        name: 'heptagon',
+        color: '#34d399',
+        bounceCoefficient: 0.6,
+        size: 40,
+        maxHealth: 190,
+        damageMultiplier: 0.7,
+        stepCells: 1,
+        cost: 3.4,
+        weight: 1.0,
+      },
     ];
 
     this.enemyTypesByName = this.enemyTypes.reduce((acc, type) => {
@@ -135,26 +179,15 @@ export class EnemySystem {
     if (this.gridCols <= 0) return;
     const config = configOverride ?? this.getWaveConfig();
 
-    let budget = config.budget;
+    const spawnCount = 3 + Math.floor(Math.random() * 3); // 3–5 shapes
     const columns = shuffleArray([...Array(this.gridCols).keys()]);
 
-    if (config.bossWave) {
-      const bossColumn = columns.length ? columns.shift() : 0;
-      this.createEnemy({
-        typeOverride: this.enemyTypesByName.boss,
-        positionX: bossColumn,
-        positionY: this.gridRows - 1,
-        modifiers: ['armored', 'elite'],
-      });
-      budget -= this.enemyTypesByName.boss.cost;
-    }
-
-    while (budget > 0) {
+    for (let i = 0; i < spawnCount; i += 1) {
       if (!columns.length) {
         columns.push(...shuffleArray([...Array(this.gridCols).keys()]));
       }
       const column = columns.shift();
-      const enemyType = this.pickTypeForBudget(budget);
+      const enemyType = this.pickTypeForBudget(999); // ignore budget for fixed count
       const modifiers = this.rollModifiers(config);
       this.createEnemy({
         typeOverride: enemyType,
@@ -162,7 +195,6 @@ export class EnemySystem {
         positionY: this.gridRows - 1,
         modifiers,
       });
-      budget -= enemyType.cost;
     }
   }
 
@@ -189,7 +221,16 @@ export class EnemySystem {
 
   getHealthMultiplier(isFragment) {
     if (isFragment) return 1;
-    return 1 + this.waveNumber * 0.12;
+
+    const baseHits = this.waveNumber === 1 ? (1 + Math.random() * 3) : 2;
+    const extraBalls =
+      (this.engine.baseBallsPerTurn || this.engine.baseBallBaseline || 5) -
+      (this.engine.baseBallBaseline || 5);
+    const ballFactor = 1 + Math.max(0, extraBalls) * 0.25;
+    const waveFactor = 1 + (this.waveNumber - 1) * 0.15;
+
+    const healthPerHit = this.engine.ballDamage;
+    return (baseHits * healthPerHit * ballFactor * waveFactor) / healthPerHit;
   }
 
   createEnemy(options = {}) {
@@ -233,7 +274,7 @@ export class EnemySystem {
       type: baseType.name,
       bounceCoefficient: baseType.bounceCoefficient,
       stepCells: fragmentOf ? 1 : baseType.stepCells,
-      rotation: 0,
+      rotation: Math.random() * Math.PI * 2,
       health: scaledHealth,
       maxHealth: scaledHealth,
       damageMultiplier: fragmentOf ? 0.6 : baseType.damageMultiplier,
@@ -285,7 +326,7 @@ export class EnemySystem {
           enemy.gridY -= enemy.stepCells;
           enemy.y = enemy.gridY * this.gridSize;
         }
-        enemy.rotation += 0.08;
+        // enemy.rotation += 0.08; // blocks no longer spin
 
         if (enemy.gridY < 0) {
           this.engine.enemies.splice(i, 1);
