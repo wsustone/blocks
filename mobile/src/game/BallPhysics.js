@@ -86,13 +86,9 @@ export class BallPhysics {
         this.applyWallBounce(ball, 0, 1);
         ball.y = ball.radius;
       } else if (ball.y + ball.radius > this.engine.height) {
-        this.applyWallBounce(ball, 0, -1);
-        ball.y = this.engine.height - ball.radius;
-
-        if (Math.abs(ball.vy) < 0.5) {
-          this.engine.balls.splice(i, 1);
-          changed = true;
-        }
+        // Remove ball when it falls through the bottom
+        this.engine.balls.splice(i, 1);
+        changed = true;
       }
 
       if (ball.y < -50) {

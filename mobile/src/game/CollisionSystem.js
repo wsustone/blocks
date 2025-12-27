@@ -86,6 +86,7 @@ export class CollisionSystem {
 
     // Bias normal toward nearest polygon face using enemy rotation
     const biasedNormal = this.getPolygonBiasedNormal(enemy, normalX, normalY);
+    console.log('AABB normal:', { nx: normalX, ny: normalY }, 'Biased:', biasedNormal, 'type:', enemy.type, 'rotation:', enemy.rotation);
     this.applyBounce(ball, biasedNormal.x, biasedNormal.y, penetration, modifiedBounceCoeff);
     return wasKilled;
   }
@@ -104,26 +105,30 @@ export class CollisionSystem {
     }[enemy.type] || 4;
 
     const angleStep = (Math.PI * 2) / sides;
-    const baseAngle = enemy.rotation; // current rotation
+    const baseAngle = enemy.rotation;
 
-    // Find the nearest face angle to the current normal
-    let bestFaceAngle = 0;
+    // Compute edge normals (perpendicular to edges, pointing outward)
+    let bestEdgeNormalX = 0, bestEdgeNormalY = 0;
     let bestDot = -Infinity;
+
     for (let i = 0; i < sides; i += 1) {
-      const faceAngle = baseAngle + i * angleStep;
-      const faceNormalX = Math.cos(faceAngle);
-      const faceNormalY = Math.sin(faceAngle);
-      const dot = nx * faceNormalX + ny * faceNormalY;
+      const edgeAngle = baseAngle + i * angleStep;
+      // Edge normal is edge angle + 90 degrees (pointing outward)
+      const normalAngle = edgeAngle + Math.PI / 2;
+      const normalX = Math.cos(normalAngle);
+      const normalY = Math.sin(normalAngle);
+      const dot = nx * normalX + ny * normalY;
       if (dot > bestDot) {
         bestDot = dot;
-        bestFaceAngle = faceAngle;
+        bestEdgeNormalX = normalX;
+        bestEdgeNormalY = normalY;
       }
     }
 
-    // Blend the AABB normal with the nearest face normal
-    const blend = 0.6; // how much to bias toward the polygon face
-    const biasedX = nx * (1 - blend) + Math.cos(bestFaceAngle) * blend;
-    const biasedY = ny * (1 - blend) + Math.sin(bestFaceAngle) * blend;
+    // Blend the AABB normal with the best edge normal
+    const blend = 0.85;
+    const biasedX = nx * (1 - blend) + bestEdgeNormalX * blend;
+    const biasedY = ny * (1 - blend) + bestEdgeNormalY * blend;
     const len = Math.sqrt(biasedX * biasedX + biasedY * biasedY);
     return { x: biasedX / len, y: biasedY / len };
   }
